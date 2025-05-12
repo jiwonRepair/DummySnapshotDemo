@@ -5,6 +5,7 @@
 #include <QStringList>
 #include <QByteArray>
 #include <functional>
+#include <QtConcurrent/QtConcurrentRun>
 
 class SnapshotManager : public QObject {
     Q_OBJECT
@@ -17,7 +18,13 @@ public:
     void registerSnapshotSource(std::function<QByteArray()> func);
     void registerLoadFunction(std::function<void(QByteArray)> func);
 
-    void capture(const QString& resource, QObject* context, const QByteArray& data, const QByteArray& meta);
+    Q_INVOKABLE void capture(const QString& resource, QObject* context, const QByteArray& data, const QByteArray& meta);
+
+    QFuture<void> captureAsync(const QString& resource, QObject* context,
+                               const QByteArray& data, const QByteArray& meta);
+
+    QFuture<void> saveSnapshotAsync(const QJsonDocument& doc, const QString& filename);
+
     QByteArray buildMeta(const QString& functionName, const QString& operation,
                          int expected, int actual, const QString& status);
 

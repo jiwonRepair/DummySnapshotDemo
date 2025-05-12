@@ -33,47 +33,56 @@ QByteArray SnapshotManager::buildMeta(const QString& functionName,
     return QJsonDocument(metaJson).toJson(QJsonDocument::Compact);
 }
 
+void SnapshotManager::capture(const QString& resource, QObject* context, const QByteArray& data, const QByteArray& meta){
+    captureAsync(resource, context, data, meta);
+}
 
-
-void SnapshotManager::capture(const QString& resource, QObject* context, const QByteArray& data, const QByteArray& meta)
+QFuture<void> SnapshotManager::captureAsync(const QString& resource, QObject* context,
+                                            const QByteArray& data, const QByteArray& meta)
 {
     QJsonObject snap;
     snap["resource"] = resource;
     snap["context"] = context ? context->objectName() : "";
     snap["timestamp"] = QDateTime::currentDateTime().toString(Qt::ISODate);
 
-    // meta JSON 병합
+    // meta 병합
     QJsonDocument metaDoc = QJsonDocument::fromJson(meta);
     if (metaDoc.isObject()) {
-        const auto metaObj = metaDoc.object();
-        const QStringList keys = metaObj.keys();  // detach 방지
+        const QJsonObject metaObj = metaDoc.object();
+        const QStringList keys = metaObj.keys(); // detach 방지
         for (const QString& key : keys) {
             snap.insert(key, QJsonValue::fromVariant(metaObj.value(key).toVariant()));
         }
-
     }
 
-    // input과 data는 QJsonDocument로부터 추출 (역직렬화)
+    // data 파싱
     QJsonDocument inputDoc = QJsonDocument::fromJson(data);
     if (inputDoc.isObject()) {
         snap["data"] = inputDoc.object();
     } else {
-        snap["data"] = QString::fromUtf8(data); // fallback
+        snap["data"] = QString::fromUtf8(data);
     }
 
     QDir().mkpath("snapshots");
-    QString filename = QString("snapshots/%1_%2.json")
-                           .arg(resource, QDateTime::currentDateTime().toString("yyyyMMdd_HHmmss"));
+    const QString filename = QString("snapshots/%1_%2.json")
+                                 .arg(resource, QDateTime::currentDateTime().toString("yyyyMMdd_HHmmss"));
 
-    QFile file(filename);
-    if (file.open(QIODevice::WriteOnly)) {
-        file.write(QJsonDocument(snap).toJson(QJsonDocument::Indented));
-        qDebug() << "[Snapshot] Saved to" << filename;
-    } else {
-        qWarning() << "[Snapshot] Failed to write:" << filename;
-    }
+    QJsonDocument finalDoc(snap);
+    return saveSnapshotAsync(finalDoc, filename);
 }
 
+QFuture<void> SnapshotManager::saveSnapshotAsync(const QJsonDocument& doc, const QString& filename)
+{
+    return QtConcurrent::run([doc, filename]() {
+        QFile file(filename);
+        if (file.open(QIODevice::WriteOnly)) {
+            file.write(doc.toJson(QJsonDocument::Indented));
+            qDebug() << "[Snapshot] Saved to" << filename;
+        } else {
+            qWarning() << "[Snapshot] Failed to write:" << filename;
+        }
+    });
+}
 
 
 QByteArray SnapshotManager::restore() const {

@@ -6,13 +6,12 @@ set(CMAKE_WIN32_EXECUTABLE OFF CACHE BOOL "Force console app")
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_WIN32_EXECUTABLE OFF CACHE BOOL "Force console app")
 
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
-find_package(Qt6 REQUIRED COMPONENTS Core Gui Quick Qml)
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Quick Qml Concurrent)
 
 add_executable(DummySnapshotDemo
     src/main.cpp
@@ -29,7 +28,7 @@ add_executable(DummySnapshotDemo
 )
 
 target_link_libraries(DummySnapshotDemo
-    Qt6::Core Qt6::Gui Qt6::Qml Qt6::Quick
+    Qt6::Core Qt6::Gui Qt6::Qml Qt6::Quick Qt6::Concurrent
 )
 
 add_custom_command(TARGET DummySnapshotDemo POST_BUILD
