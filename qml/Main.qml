@@ -12,8 +12,17 @@ ApplicationWindow {
         spacing: 20
 
         Text {
-            text: "상태: " + dummy.state
+            text: dummy ? ("상태: " + dummy.state + " / 리셋 이유: " + dummy.resetReason) : "상태 정보 없음"
             font.pointSize: 14
+        }
+
+        Connections {
+            target: dummy
+            function onResetInvoked() {
+                console.log("리셋됨")
+                console.log("상태:", dummy.state)
+                console.log("리셋 이유:", dummy.resetReason) // ✅ 이제 항상 최신값
+            }
         }
 
         Row {
@@ -28,17 +37,27 @@ ApplicationWindow {
                 placeholderText: "b 값"
                 width: 80
             }
+            TextField {
+                id: output
+                readOnly: true          // 🔹 키보드 입력 차단
+                focus: false        // 🔹 포커스 자체 제거
+                cursorVisible: false    // 🔹 커서 숨김
+                background: null        // 🔹 (선택) 배경 제거
+                placeholderText: "a+b 값"                
+                width: 80
+            }
             Button {
                 text: "연산 실행"
                 onClicked: {
                     dummy.setInputs(parseInt(inputA.text), parseInt(inputB.text))
-                    //dummy.performOperation()
                     dummy.performOperationGeneralized(
                         { "a": parseInt(inputA.text), "b": parseInt(inputB.text) },  // QJsonObject equivalent
                         "a + b",             // operation
                         2,                   // expected
                         parseInt(inputA.text) + parseInt(inputB.text)            // actual
                     )
+
+                    output.text = (Number(inputA.text) + Number(inputB.text)).toString()
 
                     if (dummy.state !== "OK") {
                         //snapshot.captureFromQml("Ui", "dummy", dummy.state)

@@ -15,7 +15,7 @@ void Dummy::performOperation() {
     if (state_ != "OK") {
         QByteArray meta = sm.buildMeta(__func__, "a + b", 2, result, state_);
         sm.capture("Dummy", this, snapshot(), meta);
-        rm.resetOne(this);
+        this->reset();
     }
 }
 
@@ -24,6 +24,14 @@ void Dummy::performOperationGeneralized(const QJsonObject& input,
                                         const QVariant& expected,
                                         const QVariant& actual)
 {
+    // 🔹 1. 입력 복원
+    if (input.contains("a")) a_ = input["a"].toInt();
+    if (input.contains("b")) b_ = input["b"].toInt();
+
+    // 🔹 2. 출력 저장
+    output_ = actual.toString();
+
+    // 🔹 3. 상태 판단
     state_ = (actual == expected) ? "OK" : "FAIL";
     emit stateChanged();
 
@@ -39,16 +47,28 @@ void Dummy::performOperationGeneralized(const QJsonObject& input,
         meta["input"] = input;
 
         sm.capture("Dummy", this, snapshot(), QJsonDocument(meta).toJson(QJsonDocument::Compact));
-        rm.resetOne(this);
+        this->reset();
     }
 }
 
-
-
 void Dummy::reset() {
-    state_ = "Reset";
-    emit stateChanged();
+    if (!sm.restore().isEmpty()) {
+        sm.restoreToTarget();                 // state_는 여기서 복원됨
+        resetReason_ = "SnapshotRestored";    // 복원 경로만 표시
+        emit resetReasonChanged();
+    } else {
+        a_ = 0;
+        b_ = 0;
+        state_ = "ResetToDefault";            // 수동 초기화이므로 명시
+        resetReason_ = "DefaultReset";
+        emit stateChanged();                  // 이 경우엔 직접 호출
+        emit resetReasonChanged();
+    }
+
+    emit resetInvoked();                      // QML 감지용
 }
+
+
 
 void Dummy::loadSnapshot(const QByteArray& data) {
     QJsonDocument doc = QJsonDocument::fromJson(data);
@@ -86,3 +106,8 @@ QByteArray Dummy::snapshot() const {
 QString Dummy::state() const {
     return state_;
 }
+
+QString Dummy::resetReason() const {
+    return resetReason_;
+}
+

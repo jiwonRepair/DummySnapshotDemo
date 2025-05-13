@@ -34,6 +34,7 @@ QByteArray SnapshotManager::buildMeta(const QString& functionName,
 }
 
 void SnapshotManager::capture(const QString& resource, QObject* context, const QByteArray& data, const QByteArray& meta){
+    m_lastSnapshot = data; // ✅ 여기에 현재 스냅샷 저장
     captureAsync(resource, context, data, meta);
 }
 

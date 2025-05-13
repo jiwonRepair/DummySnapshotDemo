@@ -7,7 +7,7 @@
 #include <QJsonObject>
 #include <QJsonDocument>
 #include "SnapshotManager.h"
-#include "ResetManager.h"
+
 
 class Dummy : public QObject {
     Q_OBJECT
@@ -21,7 +21,10 @@ public:
     Q_INVOKABLE QByteArray snapshot() const;
 
     Q_PROPERTY(QString state READ state NOTIFY stateChanged)
+    Q_PROPERTY(QString resetReason READ resetReason NOTIFY resetReasonChanged)
+
     QString state() const;
+    QString resetReason() const;
 
     /**
      * @brief 일반적인 연산 검사 후 실패 시 자동으로 스냅샷 및 리셋을 수행합니다.
@@ -38,14 +41,17 @@ public:
 
 signals:
     void stateChanged();
+    void resetInvoked(); // ✅ 리셋이 실행됐음을 알리는 신호
+    void resetReasonChanged();
 
 private:
     int a_ = 0;
     int b_ = 0;
     QString state_ = "Init";
+    QString resetReason_ = "";
+    QString output_ = "";
 
     SnapshotManager sm;
-    ResetManager rm;
 };
 
 #endif // DUMMY_H
