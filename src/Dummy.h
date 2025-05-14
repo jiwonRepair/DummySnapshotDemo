@@ -22,9 +22,11 @@ public:
 
     Q_PROPERTY(QString state READ state NOTIFY stateChanged)
     Q_PROPERTY(QString resetReason READ resetReason NOTIFY resetReasonChanged)
+    Q_PROPERTY(QString output READ output NOTIFY stateChanged)
 
     QString state() const;
     QString resetReason() const;
+    QString output() const;
 
     /**
      * @brief 일반적인 연산 검사 후 실패 시 자동으로 스냅샷 및 리셋을 수행합니다.

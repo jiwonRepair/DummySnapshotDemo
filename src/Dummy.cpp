@@ -28,14 +28,16 @@ void Dummy::performOperationGeneralized(const QJsonObject& input,
     if (input.contains("a")) a_ = input["a"].toInt();
     if (input.contains("b")) b_ = input["b"].toInt();
 
-    // 🔹 2. 출력 저장
-    output_ = actual.toString();
+    // 🔹 2. 상태 판단
+    bool isOk = (actual == expected);
+    state_ = isOk ? "OK" : "FAIL";
 
-    // 🔹 3. 상태 판단
-    state_ = (actual == expected) ? "OK" : "FAIL";
-    emit stateChanged();
-
-    if (state_ != "OK") {
+    if (isOk) {
+        // ✅ 성공한 경우에만 출력 저장 및 QML 반영
+        output_ = actual.toString();
+        emit stateChanged();
+    } else {
+        // ❌ 실패한 경우 출력은 저장하지 않고 snapshot 복원에 맡김
         QJsonObject meta;
         meta["status"] = state_;
         meta["operation"] = operation;
@@ -47,9 +49,10 @@ void Dummy::performOperationGeneralized(const QJsonObject& input,
         meta["input"] = input;
 
         sm.capture("Dummy", this, snapshot(), QJsonDocument(meta).toJson(QJsonDocument::Compact));
-        this->reset();
+        reset();  // ✅ snapshot에서 이전 output_ 복원됨
     }
 }
+
 
 void Dummy::reset() {
     if (!sm.restore().isEmpty()) {
@@ -80,8 +83,10 @@ void Dummy::loadSnapshot(const QByteArray& data) {
         b_ = input["b"].toInt();
     }
     if (obj.contains("result")) {
-        state_ = obj["result"].toObject()["state"].toString();
-        emit stateChanged();
+        QJsonObject result = obj["result"].toObject();
+        state_ = result["state"].toString();
+        output_ = result["output"].toString();  // ✅ 출력 복원
+        emit stateChanged();  // output이 Q_PROPERTY로 바인딩되었으므로 QML에 반영됨
     }
 }
 
@@ -98,6 +103,7 @@ QByteArray Dummy::snapshot() const {
 
     QJsonObject result;
     result["state"] = state_;
+    result["output"] = output_;
     obj["result"] = result;
 
     return QJsonDocument(obj).toJson();
@@ -109,5 +115,9 @@ QString Dummy::state() const {
 
 QString Dummy::resetReason() const {
     return resetReason_;
+}
+
+QString Dummy::output() const {
+    return output_;
 }
 
