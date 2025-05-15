@@ -1,6 +1,7 @@
 #include "Dummy.h"
 
-Dummy::Dummy(QObject* parent) : QObject(parent) {}
+Dummy::Dummy(SnapshotManager* sharedSnapshot, QObject* parent)
+    : QObject(parent), sm(sharedSnapshot) {}
 
 void Dummy::setInputs(int a, int b) {
     a_ = a;
@@ -13,8 +14,8 @@ void Dummy::performOperation() {
     emit stateChanged();
 
     if (state_ != "OK") {
-        QByteArray meta = sm.buildMeta(__func__, "a + b", 2, result, state_);
-        sm.capture("Dummy", this, snapshot(), meta);
+        QByteArray meta = sm->buildMeta(__func__, "a + b", 2, result, state_);
+        sm->capture("Dummy", this, snapshot(), meta);
         this->reset();
     }
 }
@@ -48,15 +49,15 @@ void Dummy::performOperationGeneralized(const QJsonObject& input,
         meta["function"] = __func__;
         meta["input"] = input;
 
-        sm.capture("Dummy", this, snapshot(), QJsonDocument(meta).toJson(QJsonDocument::Compact));
+        sm->capture("Dummy", this, snapshot(), QJsonDocument(meta).toJson(QJsonDocument::Compact));
         reset();  // ✅ snapshot에서 이전 output_ 복원됨
     }
 }
 
 
 void Dummy::reset() {
-    if (!sm.restore().isEmpty()) {
-        sm.restoreToTarget();                 // state_는 여기서 복원됨
+    if (!sm->getSnapshotList().isEmpty()) {
+        sm->restoreLastSnapshot();                     // ✅ 마지막 스냅샷 복원              // state_는 여기서 복원됨
         resetReason_ = "SnapshotRestored";    // 복원 경로만 표시
         emit resetReasonChanged();
     } else {
@@ -71,8 +72,6 @@ void Dummy::reset() {
     emit resetInvoked();                      // QML 감지용
 }
 
-
-
 void Dummy::loadSnapshot(const QByteArray& data) {
     QJsonDocument doc = QJsonDocument::fromJson(data);
     if (!doc.isObject()) return;
@@ -86,8 +85,17 @@ void Dummy::loadSnapshot(const QByteArray& data) {
         QJsonObject result = obj["result"].toObject();
         state_ = result["state"].toString();
         output_ = result["output"].toString();  // ✅ 출력 복원
-        emit stateChanged();  // output이 Q_PROPERTY로 바인딩되었으므로 QML에 반영됨
+        //emit stateChanged();  // output이 Q_PROPERTY로 바인딩되었으므로 QML에 반영됨
     }
+
+    // ✅ 여기서 직접 QML 입력란에 값 주입
+    if (inputAField)
+        inputAField->setProperty("text", QString::number(a_));
+    if (inputBField)
+        inputBField->setProperty("text", QString::number(b_));
+
+    emit stateChanged();    // ✅ QML 반영 (state + output)
+    emit resetInvoked();    // ✅ 로그 찍히게
 }
 
 QByteArray Dummy::snapshot() const {
@@ -119,5 +127,10 @@ QString Dummy::resetReason() const {
 
 QString Dummy::output() const {
     return output_;
+}
+
+void Dummy::registerTextFields(QObject* a, QObject* b) {
+    inputAField = a;
+    inputBField = b;
 }
 

@@ -6,6 +6,8 @@
 #include <QByteArray>
 #include <functional>
 #include <QtConcurrent/QtConcurrentRun>
+#include <QJsonDocument>
+#include <QJsonObject>
 
 class SnapshotManager : public QObject {
     Q_OBJECT
@@ -29,14 +31,18 @@ public:
                          int expected, int actual, const QString& status);
 
 
-    QByteArray restore() const;
-    void restoreToTarget();
+    Q_INVOKABLE void restoreByName(const QString &name);
+    void restoreLastSnapshot();                      // ⬅️ 무정지 리셋에 사용
+    void restoreFromObject(const QJsonObject &obj);  // ⬅️ 클릭 복원에 사용
+    QString ensureJsonSuffix(const QString &name);
+
 
 private:
     std::function<QByteArray()> m_snapshotSource;
     std::function<void(QByteArray)> m_loadFunction;
-    QByteArray m_lastSnapshot;    
+    //QByteArray m_lastSnapshot;
 
+    QJsonObject m_lastSnapshot;
 };
 
 #endif // SNAPSHOTMANAGER_H

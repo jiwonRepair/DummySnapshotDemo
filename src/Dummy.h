@@ -7,12 +7,13 @@
 #include <QJsonObject>
 #include <QJsonDocument>
 #include "SnapshotManager.h"
+#include <QPointer>
 
 
 class Dummy : public QObject {
     Q_OBJECT
 public:
-    explicit Dummy(QObject* parent = nullptr);
+    explicit Dummy(SnapshotManager* sharedSnapshot, QObject* parent = nullptr);
 
     Q_INVOKABLE void setInputs(int a, int b);
     Q_INVOKABLE void performOperation();
@@ -24,9 +25,14 @@ public:
     Q_PROPERTY(QString resetReason READ resetReason NOTIFY resetReasonChanged)
     Q_PROPERTY(QString output READ output NOTIFY stateChanged)
 
+    Q_PROPERTY(int a READ a NOTIFY stateChanged)
+    Q_PROPERTY(int b READ b NOTIFY stateChanged)
+
     QString state() const;
     QString resetReason() const;
     QString output() const;
+    int a() const { return a_; }
+    int b() const { return b_; }
 
     /**
      * @brief 일반적인 연산 검사 후 실패 시 자동으로 스냅샷 및 리셋을 수행합니다.
@@ -41,6 +47,8 @@ public:
                                      const QVariant& expected,
                                      const QVariant& actual);
 
+    Q_INVOKABLE void registerTextFields(QObject* inputA, QObject* inputB);
+
 signals:
     void stateChanged();
     void resetInvoked(); // ✅ 리셋이 실행됐음을 알리는 신호
@@ -53,7 +61,10 @@ private:
     QString resetReason_ = "";
     QString output_ = "";
 
-    SnapshotManager sm;
+    SnapshotManager* sm = nullptr;  // 🔁 포인터로 변경
+
+    QPointer<QObject> inputAField;
+    QPointer<QObject> inputBField;
 };
 
 #endif // DUMMY_H

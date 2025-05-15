@@ -1,8 +1,6 @@
 #include "SnapshotManager.h"
 #include <QDir>
 #include <QFile>
-#include <QJsonDocument>
-#include <QJsonObject>
 #include <QDateTime>
 #include <QDebug>
 
@@ -34,9 +32,13 @@ QByteArray SnapshotManager::buildMeta(const QString& functionName,
 }
 
 void SnapshotManager::capture(const QString& resource, QObject* context, const QByteArray& data, const QByteArray& meta){
-    m_lastSnapshot = data; // ✅ 여기에 현재 스냅샷 저장
+    QJsonDocument doc = QJsonDocument::fromJson(data);
+    if (doc.isObject())
+        m_lastSnapshot = doc.object();  // ✅ 변환하여 저장
+
     captureAsync(resource, context, data, meta);
 }
+
 
 QFuture<void> SnapshotManager::captureAsync(const QString& resource, QObject* context,
                                             const QByteArray& data, const QByteArray& meta)
@@ -86,15 +88,32 @@ QFuture<void> SnapshotManager::saveSnapshotAsync(const QJsonDocument& doc, const
 }
 
 
-QByteArray SnapshotManager::restore() const {
-    return m_lastSnapshot;
+void SnapshotManager::restoreLastSnapshot() {
+    restoreFromObject(m_lastSnapshot);
 }
 
-void SnapshotManager::restoreToTarget() {
-    if (m_loadFunction && !m_lastSnapshot.isEmpty()) {
-        m_loadFunction(m_lastSnapshot);
+void SnapshotManager::restoreFromObject(const QJsonObject &obj) {
+    if (m_loadFunction) {
+        qDebug() << "[SnapshotManager] 복원 시도";
+        QJsonDocument doc(obj);
+        m_loadFunction(doc.toJson(QJsonDocument::Compact));
+    } else {
+        qWarning() << "[SnapshotManager] m_loadFunction이 등록되지 않음";
     }
 }
+
+void SnapshotManager::restoreByName(const QString &name) {
+    QString path = "snapshots/" + ensureJsonSuffix(name);  // ✅ 안전하게 확장자 처리
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly)) {
+        qWarning() << "[SnapshotManager] Failed to open snapshot:" << path;
+        return;
+    }
+
+    QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
+    restoreFromObject(doc.object());
+}
+
 
 void SnapshotManager::captureFromQml(const QString& resource, const QString& context, const QString& data) {
     QJsonObject snap;
@@ -124,4 +143,8 @@ QStringList SnapshotManager::getSnapshotList() const {
     for (const auto& fi : files)
         list << fi.fileName();
     return list;
+}
+
+QString SnapshotManager::ensureJsonSuffix(const QString &name) {
+    return name.endsWith(".json") ? name : name + ".json";
 }

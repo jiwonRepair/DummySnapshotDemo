@@ -71,7 +71,29 @@ ApplicationWindow {
             width: 200
             height: 100
             model: snapshotListModel
-            delegate: Text { text: name }
+            delegate: Item {
+                id: rowItem
+                width: ListView.view ? ListView.view.width : 200  // fallback
+                height: 32
+
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: name
+                }
+
+                MouseArea {
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                        console.log("📦 클릭됨:", name)
+                        snapshot.restoreByName(name)
+                    }
+                }
+            }
+        }
+
+        Component.onCompleted: {
+            dummy.registerTextFields(inputA, inputB)
         }
 
         Connections {
@@ -80,5 +102,6 @@ ApplicationWindow {
                 console.log("✅ 리셋 감지됨 → 출력값:", dummy.output)
             }
         }
+
     }
 }

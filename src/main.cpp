@@ -12,8 +12,8 @@ int main(int argc, char *argv[]) {
     QGuiApplication app(argc, argv);
     QQmlApplicationEngine engine;
 
-    Dummy dummy;
     SnapshotManager snapshot;
+    Dummy dummy(&snapshot);  // ✅ 공유 인스턴스 전달
     ResetManager resetMgr;
 
     // 연결: Dummy를 Resettable로 등록
